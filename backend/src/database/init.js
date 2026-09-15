@@ -29,7 +29,7 @@ function createTables() {
 
     const queries = [
 
-        // 1. USER
+
         `
         CREATE TABLE IF NOT EXISTS USER (
             user_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -43,7 +43,7 @@ function createTables() {
         )
         `,
 
-        // 2. GAME
+        
         `
         CREATE TABLE IF NOT EXISTS GAME (
             game_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -52,7 +52,7 @@ function createTables() {
         )
         `,
 
-        // 3. GAME_ACCOUNT
+        
         `
         CREATE TABLE IF NOT EXISTS GAME_ACCOUNT (
             account_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -76,7 +76,7 @@ function createTables() {
         )
         `,
 
-        // 4. FREE_AGENT_PROFILE
+        
         `
         CREATE TABLE IF NOT EXISTS FREE_AGENT_PROFILE (
             free_agent_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -90,7 +90,7 @@ function createTables() {
         )
         `,
 
-        // 5. TEAM
+        
         `
         CREATE TABLE IF NOT EXISTS TEAM (
             team_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -108,7 +108,7 @@ function createTables() {
         )
         `,
 
-        // 6. TEAM_MEMBER
+        
         `
         CREATE TABLE IF NOT EXISTS TEAM_MEMBER (
             member_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -131,7 +131,7 @@ function createTables() {
         )
         `,
 
-        // 7. TEAM_INVITATION
+        
         `
         CREATE TABLE IF NOT EXISTS TEAM_INVITATION (
             invitation_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -151,7 +151,7 @@ function createTables() {
         )
         `,
 
-        // 8. TOURNAMENT
+        
         `
         CREATE TABLE IF NOT EXISTS TOURNAMENT (
             tournament_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -170,7 +170,7 @@ function createTables() {
         )
         `,
 
-        // 9. TOURNAMENT_STAGE
+        
         `
         CREATE TABLE IF NOT EXISTS TOURNAMENT_STAGE (
             stage_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -187,7 +187,7 @@ function createTables() {
         )
         `,
 
-        // 10. REGISTRATION
+        
         `
         CREATE TABLE IF NOT EXISTS REGISTRATION (
             registration_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -210,7 +210,7 @@ function createTables() {
         )
         `,
 
-        // 11. MATCH
+        
         `
         CREATE TABLE IF NOT EXISTS \`MATCH\` (
             match_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -229,7 +229,7 @@ function createTables() {
         )
         `,
 
-        // 12. MATCH_PARTICIPANT
+        
         `
         CREATE TABLE IF NOT EXISTS MATCH_PARTICIPANT (
             match_participant_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -251,7 +251,7 @@ function createTables() {
         )
         `,
 
-        // 13. BRACKET_ADVANCEMENT
+        
         `
         CREATE TABLE IF NOT EXISTS BRACKET_ADVANCEMENT (
             advancement_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -270,7 +270,7 @@ function createTables() {
         )
         `,
 
-        // 14. MOBA_SERIES
+        
         `
         CREATE TABLE IF NOT EXISTS MOBA_SERIES (
             series_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -287,7 +287,7 @@ function createTables() {
         )
         `,
 
-        // 15. SERIES_PARTICIPANT
+        
         `
         CREATE TABLE IF NOT EXISTS SERIES_PARTICIPANT (
             series_participant_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -309,7 +309,7 @@ function createTables() {
         )
         `,
 
-        // 16. MOBA_GAME_RESULT
+        
         `
         CREATE TABLE IF NOT EXISTS MOBA_GAME_RESULT (
             game_result_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -329,7 +329,7 @@ function createTables() {
         )
         `,
 
-        // 17. MATCH_RESULT
+        
         `
         CREATE TABLE IF NOT EXISTS MATCH_RESULT (
             result_id INT AUTO_INCREMENT PRIMARY KEY,
