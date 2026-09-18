@@ -63,7 +63,6 @@ function createTables() {
             server_region VARCHAR(30),
             is_free_agent BOOLEAN NOT NULL DEFAULT FALSE,
             university VARCHAR(100),
-
             UNIQUE (game_id, game_uid),
 
             FOREIGN KEY (user_id)
@@ -75,7 +74,7 @@ function createTables() {
                 ON DELETE CASCADE
         )
         `,
-
+        
         
         `
         CREATE TABLE IF NOT EXISTS FREE_AGENT_PROFILE (
