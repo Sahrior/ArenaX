@@ -1,7 +1,49 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 
 function Login() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
+
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const loginData = {
+      email,
+      password
+    };
+
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        credentials: "include",
+        body: JSON.stringify(loginData)
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert(data.message);
+        console.log("Logged in user:", data.user);
+
+        navigate("/profile");
+      } else {
+        alert(data.message);
+      }
+
+    } catch (error) {
+      console.log(error);
+      alert("Cannot connect to server!");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
 
@@ -26,19 +68,21 @@ function Login() {
           </div>
 
 
-          <form className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5">
 
             {/* Email */}
 
             <div>
 
               <label className="mb-2 block text-sm font-medium text-zinc-300">
-                Email or Username
+                Email
               </label>
 
               <input
-                type="text"
-                placeholder="Enter your email or username"
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-red-500"
               />
 
@@ -56,6 +100,8 @@ function Login() {
               <input
                 type="password"
                 placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-red-500"
               />
 
@@ -70,6 +116,8 @@ function Login() {
 
                 <input
                   type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
                   className="accent-red-500"
                 />
 

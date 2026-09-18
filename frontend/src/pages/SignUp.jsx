@@ -10,28 +10,52 @@ function SignUp() {
   const [role, setRole] = useState("player");
   const [terms, setTerms] = useState(false);
 
-  const handleSubmit = (e) => {
+const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (password !== confirmPassword) {
-      alert("Passwords do not match!");
-      return;
+        alert("Passwords do not match!");
+        return;
     }
 
     if (!terms) {
-      alert("Please agree to the terms and conditions.");
-      return;
+        alert("Please agree to the terms and conditions.");
+        return;
     }
 
     const userData = {
-      username,
-      email,
-      password,
-      role
+        username,
+        email,
+        password,
+        role
     };
 
-    console.log(userData);
-  };
+    //console.log(userData);
+    
+
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/signup", {
+          method: "POST",
+          headers: {
+              "Content-Type": "application/json"
+          },
+          credentials: "include",
+          body: JSON.stringify(userData)
+      });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            alert(data.message);
+        } else {
+            alert(data.message);
+        }
+
+    } catch (error) {
+        console.log(error);
+        alert("Cannot connect to server!");
+    }
+};
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">

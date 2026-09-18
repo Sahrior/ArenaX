@@ -7,6 +7,7 @@ import Teams from "./pages/Teams";
 import FreeAgents from "./pages/FreeAgents";
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
+import Profile from "./pages/Profile";
 
 function App() {
   return (
@@ -44,6 +45,11 @@ function App() {
         <Route
           path="/signup"
           element={<SignUp />}
+        />
+
+        <Route
+          path="/profile"
+          element={<Profile />}
         />
 
       </Routes>
