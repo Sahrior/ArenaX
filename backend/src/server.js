@@ -44,7 +44,7 @@ app.use(
 app.get("/", (req, res) => {
     res.send("ArenaX Backend is running!");
 });
-const {requireAuth,requireRole}=require("./middleware/authmiddleware")
+const {requireAuth,requireRole}=require("./middleware/authMiddleware")
 app.use("/api/auth", authRoutes);
 app.use("/api/games", gameRoutes);
 app.use("/api/game-accounts", gameAccountRoutes);
