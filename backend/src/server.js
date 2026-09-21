@@ -4,6 +4,7 @@ const session = require("express-session");
 const MySQLStore = require("express-mysql-session")(session);
 
 const authRoutes = require("./routes/authRoutes");
+const gameRoutes = require("./routes/gameRoutes");
 
 const app = express();
 
@@ -42,8 +43,23 @@ app.use(
 app.get("/", (req, res) => {
     res.send("ArenaX Backend is running!");
 });
-
+const {requireAuth,requireRole}=require("./middleware/authmiddleware")
 app.use("/api/auth", authRoutes);
+app.use("/api/games", gameRoutes);
+app.get("/api/test-organizer",requireRole("organizer"),
+    (req,res)=>{
+        res.json({
+            message:"You have accessed an organizer protected route!",
+        })
+    }
+)
+
+app.get("/api/test-protected", requireAuth, (req, res) => {
+    res.status(200).json({
+        message: "You have accessed a protected route!",
+        userId: req.session.userId
+    });
+});
 
 app.listen(5000, () => {
     console.log("Server running on port 5000");
