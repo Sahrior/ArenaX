@@ -96,6 +96,7 @@ function createTables() {
             game_id INT NOT NULL,
             captain_id INT NOT NULL,
             team_name VARCHAR(50) NOT NULL UNIQUE,
+            status ENUM('forming', 'active') NOT NULL DEFAULT 'forming',
             team_tag VARCHAR(20) NOT NULL UNIQUE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 

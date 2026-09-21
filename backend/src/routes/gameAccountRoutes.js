@@ -188,5 +188,67 @@ router.post("/", requireAuth, (req, res) => {
     });
 });
 
+// PUT /api/game-accounts/:id
+// Update a game account for the logged-in user
+router.put("/:id", requireAuth, (req, res) => {
+    const accountId = req.params.id;
+    const userId = req.session.userId;
+
+    const { game_username,
+        game_uid,
+        server_region,
+     } = req.body;
+
+    if (!game_username|| !game_uid || !server_region) {
+        return res.status(400).json({
+            error: "GAME USERNAME, GAME UID, AND SERVER REGION ARE REQUIRED"
+        });
+    }
+    const ownershipCheckSql = `
+        SELECT account_id,game_id
+        FROM GAME_ACCOUNT
+        WHERE account_id = ? AND user_id = ?
+    `;
+    db.query(ownershipCheckSql, [accountId, userId], (err, ownershipResults) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({
+                error: "FAILED TO CHECK ACCOUNT OWNERSHIP"
+            });
+        }
+
+        if (ownershipResults.length === 0) {
+            return res.status(404).json({
+                error: "YOU ARE NOT THE OWNER OF THIS ACCOUNT"
+            });
+        }
+
+        const currentGameId = ownershipResults[0].game_id;
+
+        const uidCheckSql = `
+            SELECT account_id
+            FROM GAME_ACCOUNT
+            WHERE game_id = ? AND game_uid = ? AND account_id != ?
+        `;
+        db.query(uidCheckSql, [currentGameId, game_uid, accountId], (err, uidResults) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({
+                    error: "FAILED TO CHECK GAME UID"
+                });
+            }
+
+            if (uidResults.length > 0) {
+                return res.status(409).json({
+                    error: "THIS GAME UID IS ALREADY IN USE"
+                });
+            }
+
+            // If we reach here, the user is the owner of the account
+            // Proceed with the update logic
+        });
+    });
+});
+
 
 module.exports = router;
