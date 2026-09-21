@@ -5,6 +5,7 @@ const MySQLStore = require("express-mysql-session")(session);
 
 const authRoutes = require("./routes/authRoutes");
 const gameRoutes = require("./routes/gameRoutes");
+const gameAccountRoutes = require("./routes/gameAccountRoutes");
 
 const app = express();
 
@@ -46,6 +47,7 @@ app.get("/", (req, res) => {
 const {requireAuth,requireRole}=require("./middleware/authmiddleware")
 app.use("/api/auth", authRoutes);
 app.use("/api/games", gameRoutes);
+app.use("/api/game-accounts", gameAccountRoutes);
 app.get("/api/test-organizer",requireRole("organizer"),
     (req,res)=>{
         res.json({
