@@ -6,11 +6,15 @@ function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrorMessage("");
+    setLoading(true);
 
     const loginData = {
       email,
@@ -30,28 +34,29 @@ function Login() {
       const data = await response.json();
 
       if (response.ok) {
-        alert(data.message);
-        console.log("Logged in user:", data.user);
-
+        // Dispatch event so Navbar immediately updates auth state
+        window.dispatchEvent(new Event("auth-change"));
         navigate("/profile");
       } else {
-        alert(data.message);
+        setErrorMessage(data.message || data.error || "Login failed.");
       }
 
     } catch (error) {
-      console.log(error);
-      alert("Cannot connect to server!");
+      console.error(error);
+      setErrorMessage("Cannot connect to ArenaX server!");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
+    <div className="min-h-screen bg-zinc-950 text-white flex flex-col">
 
       <Navbar />
 
-      <div className="flex min-h-[calc(100vh-80px)] items-center justify-center px-6 py-16">
+      <div className="flex flex-1 items-center justify-center px-6 py-16">
 
-        <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900/60 p-8 md:p-10">
+        <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900/60 p-8 md:p-10 shadow-2xl">
 
           {/* Header */}
 
@@ -67,6 +72,15 @@ function Login() {
 
           </div>
 
+          {/* Error Banner */}
+          {errorMessage && (
+            <div className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 p-3.5 text-xs text-red-400 flex items-center gap-2">
+              <svg className="w-4 h-4 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>{errorMessage}</span>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
 
@@ -83,6 +97,7 @@ function Login() {
                 placeholder="Enter your email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                required
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-red-500"
               />
 
@@ -102,6 +117,7 @@ function Login() {
                 placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                required
                 className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-red-500"
               />
 
@@ -139,9 +155,10 @@ function Login() {
 
             <button
               type="submit"
-              className="w-full rounded-lg bg-red-500 py-3.5 font-semibold transition hover:bg-red-600"
+              disabled={loading}
+              className="w-full rounded-lg bg-red-500 py-3.5 font-semibold transition hover:bg-red-600 disabled:opacity-50"
             >
-              Login
+              {loading ? "Logging in..." : "Login"}
             </button>
 
           </form>
