@@ -33,7 +33,6 @@ async function request(endpoint, options = {}) {
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      // 401 Unauthorized handling
       if (response.status === 401) {
         const error = new ApiError(data.error || data.message || "Unauthorized", 401, data);
         error.isUnauthenticated = true;
@@ -64,19 +63,16 @@ export async function logoutUser() {
 // Game APIs
 export async function getGames() {
   const data = await request("/games");
-  // Backend returns { game: [...] }
   return data.game || [];
 }
 
 // Game Account Management APIs
 export async function getMyGameAccounts() {
   const data = await request("/game-accounts/my");
-  // Backend returns { gameAccounts: [...] }
   return data.gameAccounts || [];
 }
 
 export async function createGameAccount(accountData) {
-  // accountData: { game_id, game_username, game_uid, server_region, is_free_agent, university }
   return request("/game-accounts", {
     method: "POST",
     body: JSON.stringify(accountData),
@@ -84,7 +80,6 @@ export async function createGameAccount(accountData) {
 }
 
 export async function updateGameAccount(accountId, accountData) {
-  // accountData: { game_username, game_uid, server_region } (game_id is NOT sent/editable)
   return request(`/game-accounts/${accountId}`, {
     method: "PUT",
     body: JSON.stringify(accountData),
@@ -94,12 +89,10 @@ export async function updateGameAccount(accountId, accountData) {
 // Team Management APIs
 export async function getMyTeams() {
   const data = await request("/teams/my");
-  // Backend returns { teams: [...] }
   return data.teams || [];
 }
 
 export async function createTeam(teamData) {
-  // teamData: { game_id, team_name, team_tag }
   return request("/teams", {
     method: "POST",
     body: JSON.stringify(teamData),
@@ -108,6 +101,70 @@ export async function createTeam(teamData) {
 
 export async function getTeamDetails(teamId) {
   const data = await request(`/teams/${teamId}`);
-  // Backend returns { team: { team_id, team_name, team_tag, status, game_name, members: [...] } }
   return data.team;
+}
+
+// Free Agent Management & Discovery APIs
+export async function getFreeAgents(filters = {}) {
+  const params = new URLSearchParams();
+  if (filters.game_id) params.append("game_id", filters.game_id);
+  if (filters.preferred_role) params.append("preferred_role", filters.preferred_role);
+  if (filters.university) params.append("university", filters.university);
+  if (filters.search) params.append("search", filters.search);
+
+  const queryString = params.toString();
+  const endpoint = queryString ? `/free-agents?${queryString}` : "/free-agents";
+  const data = await request(endpoint);
+  return data.freeAgents || [];
+}
+
+export async function getMyFreeAgents() {
+  const data = await request("/free-agents/my");
+  return data.freeAgents || [];
+}
+
+export async function createFreeAgentProfile(profileData) {
+  return request("/free-agents", {
+    method: "POST",
+    body: JSON.stringify(profileData),
+  });
+}
+
+export async function updateFreeAgentProfile(id, profileData) {
+  return request(`/free-agents/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(profileData),
+  });
+}
+
+export async function deleteFreeAgentProfile(id) {
+  return request(`/free-agents/${id}`, {
+    method: "DELETE",
+  });
+}
+
+// Team Invitation APIs
+export async function sendTeamInvitation(invitationData) {
+  // invitationData: { team_id, game_account_id }
+  return request("/team-invitations", {
+    method: "POST",
+    body: JSON.stringify(invitationData),
+  });
+}
+
+export async function getMyTeamInvitations() {
+  const data = await request("/team-invitations/my");
+  return data.invitations || [];
+}
+
+export async function acceptTeamInvitation(id) {
+  return request(`/team-invitations/${id}/accept`, {
+    method: "POST",
+  });
+}
+
+export async function rejectTeamInvitation(id) {
+  return request(`/team-invitations/${id}/reject`, {
+    method: "POST",
+  });
 }

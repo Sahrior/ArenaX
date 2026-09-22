@@ -7,6 +7,8 @@ const authRoutes = require("./routes/authRoutes");
 const gameRoutes = require("./routes/gameRoutes");
 const gameAccountRoutes = require("./routes/gameAccountRoutes");
 const teamRoutes = require("./routes/teamRoutes");
+const freeAgentRoutes = require("./routes/freeAgentRoutes");
+const teamInvitationRoutes = require("./routes/teamInvitationRoutes");
 
 const app = express();
 
@@ -45,18 +47,21 @@ app.use(
 app.get("/", (req, res) => {
     res.send("ArenaX Backend is running!");
 });
-const {requireAuth,requireRole}=require("./middleware/authMiddleware")
+
+const { requireAuth, requireRole } = require("./middleware/authMiddleware");
+
 app.use("/api/auth", authRoutes);
 app.use("/api/games", gameRoutes);
 app.use("/api/game-accounts", gameAccountRoutes);
 app.use("/api/teams", teamRoutes);
-app.get("/api/test-organizer",requireRole("organizer"),
-    (req,res)=>{
-        res.json({
-            message:"You have accessed an organizer protected route!",
-        })
-    }
-)
+app.use("/api/free-agents", freeAgentRoutes);
+app.use("/api/team-invitations", teamInvitationRoutes);
+
+app.get("/api/test-organizer", requireRole("organizer"), (req, res) => {
+    res.json({
+        message: "You have accessed an organizer protected route!",
+    });
+});
 
 app.get("/api/test-protected", requireAuth, (req, res) => {
     res.status(200).json({

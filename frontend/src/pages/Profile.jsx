@@ -4,18 +4,37 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import GameAccountCard from "../components/GameAccountCard";
 import GameAccountModal from "../components/GameAccountModal";
-import { getMe, getMyGameAccounts, getGames, logoutUser } from "../api";
+import FreeAgentProfileModal from "../components/FreeAgentProfileModal";
+import {
+  getMe,
+  getMyGameAccounts,
+  getGames,
+  logoutUser,
+  getMyFreeAgents,
+  deleteFreeAgentProfile,
+  getMyTeamInvitations,
+  acceptTeamInvitation,
+  rejectTeamInvitation
+} from "../api";
 
 function Profile() {
   const [user, setUser] = useState(null);
   const [gameAccounts, setGameAccounts] = useState([]);
   const [games, setGames] = useState([]);
+  const [freeAgentProfiles, setFreeAgentProfiles] = useState([]);
+  const [invitations, setInvitations] = useState([]);
 
   const [loadingUser, setLoadingUser] = useState(true);
   const [loadingAccounts, setLoadingAccounts] = useState(true);
+  const [loadingFa, setLoadingFa] = useState(true);
+  const [loadingInvitations, setLoadingInvitations] = useState(true);
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // Modals
+  const [isGaModalOpen, setIsGaModalOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState(null);
+
+  const [isFaModalOpen, setIsFaModalOpen] = useState(false);
+  const [editingFaProfile, setEditingFaProfile] = useState(null);
 
   const [toastMessage, setToastMessage] = useState("");
 
@@ -38,7 +57,7 @@ function Profile() {
     fetchUserData();
   }, [navigate]);
 
-  // Load Games & Game Accounts
+  // Load Game Accounts & Games
   const loadGameData = async () => {
     setLoadingAccounts(true);
     try {
@@ -58,9 +77,37 @@ function Profile() {
     }
   };
 
+  // Load Free Agent Profiles
+  const loadFreeAgentProfiles = async () => {
+    setLoadingFa(true);
+    try {
+      const faList = await getMyFreeAgents();
+      setFreeAgentProfiles(faList);
+    } catch (error) {
+      console.error("Failed to load free agent profiles:", error);
+    } finally {
+      setLoadingFa(false);
+    }
+  };
+
+  // Load Invitations
+  const loadInvitations = async () => {
+    setLoadingInvitations(true);
+    try {
+      const fetchedInvitations = await getMyTeamInvitations();
+      setInvitations(fetchedInvitations);
+    } catch (error) {
+      console.error("Failed to load team invitations:", error);
+    } finally {
+      setLoadingInvitations(false);
+    }
+  };
+
   useEffect(() => {
     if (user) {
       loadGameData();
+      loadFreeAgentProfiles();
+      loadInvitations();
     }
   }, [user]);
 
@@ -74,30 +121,83 @@ function Profile() {
   const handleLogout = async () => {
     try {
       await logoutUser();
+      window.dispatchEvent(new Event("auth-change"));
       navigate("/login");
     } catch (error) {
       console.error(error);
+      window.dispatchEvent(new Event("auth-change"));
       navigate("/login");
     }
   };
 
-  const handleOpenAddModal = () => {
+  // Game Account Handlers
+  const handleOpenAddGaModal = () => {
     setEditingAccount(null);
-    setIsModalOpen(true);
+    setIsGaModalOpen(true);
   };
 
-  const handleOpenEditModal = (account) => {
+  const handleOpenEditGaModal = (account) => {
     setEditingAccount(account);
-    setIsModalOpen(true);
+    setIsGaModalOpen(true);
   };
 
-  const handleModalSuccess = () => {
+  const handleGaModalSuccess = () => {
     loadGameData();
     showSuccessToast(
       editingAccount
         ? "Game account updated successfully!"
         : "Game account added successfully!"
     );
+  };
+
+  // Free Agent Handlers
+  const handleOpenCreateFaModal = () => {
+    setEditingFaProfile(null);
+    setIsFaModalOpen(true);
+  };
+
+  const handleOpenEditFaModal = (profile) => {
+    setEditingFaProfile(profile);
+    setIsFaModalOpen(true);
+  };
+
+  const handleRemoveFaProfile = async (faId) => {
+    if (!window.confirm("Remove your free-agent profile?")) return;
+    try {
+      await deleteFreeAgentProfile(faId);
+      showSuccessToast("Free-agent profile removed successfully.");
+      loadFreeAgentProfiles();
+      loadGameData();
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Failed to remove free-agent profile.");
+    }
+  };
+
+  // Invitation Handlers
+  const handleAcceptInvite = async (inv) => {
+    try {
+      await acceptTeamInvitation(inv.invitation_id);
+      showSuccessToast(`You joined ${inv.team_name}!`);
+      loadInvitations();
+      loadGameData();
+      loadFreeAgentProfiles();
+      navigate(`/teams/${inv.team_id}`);
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Failed to accept invitation.");
+    }
+  };
+
+  const handleRejectInvite = async (invId) => {
+    try {
+      await rejectTeamInvitation(invId);
+      showSuccessToast("Invitation rejected.");
+      loadInvitations();
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Failed to reject invitation.");
+    }
   };
 
   if (loadingUser) {
@@ -120,7 +220,7 @@ function Profile() {
     <div className="min-h-screen bg-zinc-950 text-white flex flex-col">
       <Navbar />
 
-      {/* Success Toast */}
+      {/* Success Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-950/90 px-5 py-3.5 text-sm text-emerald-300 shadow-2xl backdrop-blur-md animate-fade-in">
           <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -130,10 +230,9 @@ function Profile() {
         </div>
       )}
 
-      {/* Hero Banner */}
+      {/* Hero Banner Header */}
       <section className="relative border-b border-zinc-900 bg-gradient-to-b from-zinc-900/60 to-zinc-950 px-6 py-12">
         <div className="mx-auto max-w-7xl flex flex-col md:flex-row items-center justify-between gap-6">
-          {/* User Info Header */}
           <div className="flex items-center gap-5">
             <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 to-red-700 text-3xl font-black text-white shadow-xl shadow-red-500/10 border border-red-400/20">
               {user.username.charAt(0).toUpperCase()}
@@ -157,7 +256,6 @@ function Profile() {
             </div>
           </div>
 
-          {/* Action Button */}
           <button
             onClick={handleLogout}
             className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-zinc-300 transition hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-400"
@@ -170,7 +268,7 @@ function Profile() {
         </div>
       </section>
 
-      {/* Main Content Area */}
+      {/* Main Content Sections */}
       <main className="mx-auto max-w-7xl w-full px-6 py-12 space-y-12 flex-1">
         {/* Section 1: Personal Information */}
         <section>
@@ -212,7 +310,196 @@ function Profile() {
           </div>
         </section>
 
-        {/* Section 2: My Game Accounts */}
+        {/* Section 2: MY RECRUITMENT PROFILE */}
+        <section>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div>
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                MY RECRUITMENT PROFILE
+              </h2>
+              <p className="text-xs text-zinc-400 mt-1">
+                List your game accounts as free agents to be discovered by team captains.
+              </p>
+            </div>
+
+            {freeAgentProfiles.length === 0 && (
+              <button
+                onClick={handleOpenCreateFaModal}
+                className="inline-flex items-center gap-2 rounded-xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-red-500/20 transition hover:bg-red-600 self-start sm:self-auto"
+              >
+                + CREATE FREE-AGENT PROFILE
+              </button>
+            )}
+          </div>
+
+          {loadingFa ? (
+            <div className="h-28 rounded-2xl border border-zinc-800 bg-zinc-900/30 animate-pulse" />
+          ) : freeAgentProfiles.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-zinc-800 bg-zinc-900/20 p-8 text-center">
+              <p className="text-sm font-semibold text-white">You are not currently listed as a free agent.</p>
+              <p className="text-xs text-zinc-400 mt-1">
+                Create a recruitment profile for one of your linked game accounts so team captains can invite you.
+              </p>
+              <button
+                onClick={handleOpenCreateFaModal}
+                className="mt-4 rounded-xl bg-red-500 px-5 py-2.5 text-xs font-bold text-white hover:bg-red-600 transition"
+              >
+                CREATE FREE-AGENT PROFILE
+              </button>
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {freeAgentProfiles.map((fa) => (
+                <div
+                  key={fa.free_agent_id}
+                  className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6 flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="rounded-md bg-red-500/10 px-2.5 py-1 text-xs font-bold uppercase text-red-400 border border-red-500/20">
+                        {fa.game_name}
+                      </span>
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase border ${
+                          (fa.availability_status || "").toLowerCase() === "available"
+                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                            : "bg-zinc-800 text-zinc-400 border-zinc-700"
+                        }`}
+                      >
+                        {fa.availability_status}
+                      </span>
+                    </div>
+
+                    <h3 className="text-lg font-bold text-white">{fa.game_username}</h3>
+
+                    <div className="mt-3 space-y-1.5 text-xs text-zinc-400 border-t border-zinc-800/80 pt-3">
+                      <div className="flex justify-between">
+                        <span>Preferred Role:</span>
+                        <span className="font-semibold text-white">{fa.preferred_role || "Flex / Any"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Region:</span>
+                        <span className="uppercase text-zinc-300">{fa.server_region}</span>
+                      </div>
+                      {fa.university && (
+                        <div className="flex justify-between">
+                          <span>University:</span>
+                          <span className="text-zinc-300 font-medium truncate max-w-[150px]">{fa.university}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 mt-5 pt-3 border-t border-zinc-800/80">
+                    <button
+                      onClick={() => handleOpenEditFaModal(fa)}
+                      className="flex-1 rounded-lg border border-zinc-700 bg-zinc-800/50 py-2 text-xs font-semibold text-zinc-200 hover:bg-zinc-800 hover:text-white transition"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleRemoveFaProfile(fa.free_agent_id)}
+                      className="flex-1 rounded-lg border border-red-500/30 bg-red-500/10 py-2 text-xs font-semibold text-red-400 hover:bg-red-500/20 transition"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Section 3: MY INVITATIONS */}
+        <section>
+          <div className="mb-6">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-amber-500" />
+              MY INVITATIONS ({invitations.length})
+            </h2>
+            <p className="text-xs text-zinc-400 mt-1">
+              Roster invitations sent by team captains to your linked game accounts.
+            </p>
+          </div>
+
+          {loadingInvitations ? (
+            <div className="h-32 rounded-2xl border border-zinc-800 bg-zinc-900/30 animate-pulse" />
+          ) : invitations.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-zinc-800 bg-zinc-900/20 p-8 text-center text-xs text-zinc-500">
+              You don't have any invitations.
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {invitations.map((inv) => {
+                const isPending = (inv.invitation_status || "").toLowerCase() === "pending";
+                const isAccepted = (inv.invitation_status || "").toLowerCase() === "accepted";
+
+                return (
+                  <div
+                    key={inv.invitation_id}
+                    className={`rounded-2xl border p-5 flex flex-col justify-between ${
+                      isPending
+                        ? "border-amber-500/30 bg-zinc-900/80"
+                        : "border-zinc-800 bg-zinc-950/60"
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="rounded-md bg-red-500/10 px-2.5 py-1 text-xs font-bold uppercase text-red-400 border border-red-500/20">
+                          {inv.game_name}
+                        </span>
+                        <span className="text-xs font-mono font-bold text-zinc-400">
+                          [{inv.team_tag}]
+                        </span>
+                      </div>
+
+                      <h3 className="text-lg font-bold text-white">{inv.team_name}</h3>
+                      <p className="text-xs text-zinc-400 mt-0.5">Captain: {inv.captain_username}</p>
+                      <p className="text-[11px] text-zinc-500 mt-1">
+                        Sent: {new Date(inv.sent_at).toLocaleDateString()}
+                      </p>
+                    </div>
+
+                    <div className="mt-5 pt-3 border-t border-zinc-800/80">
+                      {isPending ? (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleAcceptInvite(inv)}
+                            className="flex-1 rounded-lg bg-emerald-500 py-2 text-xs font-bold text-white hover:bg-emerald-600 transition shadow-lg shadow-emerald-500/10"
+                          >
+                            ACCEPT
+                          </button>
+                          <button
+                            onClick={() => handleRejectInvite(inv.invitation_id)}
+                            className="flex-1 rounded-lg border border-zinc-700 py-2 text-xs font-semibold text-zinc-300 hover:bg-zinc-800 hover:text-white transition"
+                          >
+                            REJECT
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-zinc-500">Status</span>
+                          <span
+                            className={`font-bold uppercase px-2.5 py-0.5 rounded text-[11px] border ${
+                              isAccepted
+                                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                : "bg-red-500/10 text-red-400 border-red-500/20"
+                            }`}
+                          >
+                            {inv.invitation_status}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* Section 4: My Game Accounts */}
         <section>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
@@ -226,7 +513,7 @@ function Profile() {
             </div>
 
             <button
-              onClick={handleOpenAddModal}
+              onClick={handleOpenAddGaModal}
               className="inline-flex items-center gap-2 rounded-xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-red-500/20 transition hover:bg-red-600 self-start sm:self-auto"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -237,18 +524,16 @@ function Profile() {
           </div>
 
           {loadingAccounts ? (
-            /* Loading State */
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {[1, 2].map((i) => (
                 <div key={i} className="h-56 rounded-2xl border border-zinc-800 bg-zinc-900/30 p-6 animate-pulse" />
               ))}
             </div>
           ) : gameAccounts.length === 0 ? (
-            /* Empty State */
             <div className="rounded-2xl border border-dashed border-zinc-800 bg-zinc-900/20 p-12 text-center">
               <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-zinc-800 bg-zinc-900 text-zinc-500">
                 <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M11 4a2 2 0 114 0v1a2 2 0 002 2h3a1 1 0 011 1v3a2 2 0 01-2 2h-1a2 2 0 100 4h1a2 2 0 012 2v3a1 1 0 01-1 1h-3a2 2 0 01-2-2v-1a2 2 0 10-4 0v1a2 2 0 01-2 2H4a1 1 0 01-1-1v-3a2 2 0 012-2h1a2 2 0 100-4H4a2 2 0 01-2-2V7a1 1 0 011-1h3a2 2 0 012-2V4z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M11 4a2 2 0 114 0v1a2 2 0 002 2h3a1 1 0 011 1v3a2 2 0 01-2 2h-1a2 2 0 100 4h1a2 2 0 012 2v3a1 1 0 01-1 1h-3a2 2 0 01-2-2v-1a2 2 0 10-4 0v1a2 2 0 01-2 2H4a1 1 0 01-1-1v-3a2 2 0 012-2h1a2 2 0 100-4H4a2 2 0 01-2-2V7a1 1 0 011-1h3a2 2 0 01-2-2V4z" />
                 </svg>
               </div>
               <h3 className="text-lg font-bold text-white">You haven't linked any game accounts yet.</h3>
@@ -256,14 +541,13 @@ function Profile() {
                 Link your game accounts (Dota 2, LoL, MLBB, HOK) to build rosters or sign up as a free agent.
               </p>
               <button
-                onClick={handleOpenAddModal}
+                onClick={handleOpenAddGaModal}
                 className="mt-6 inline-flex items-center gap-2 rounded-xl bg-red-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-600"
               >
                 + Add Game Account
               </button>
             </div>
           ) : (
-            /* Game Accounts Grid */
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {gameAccounts.map((account) => {
                 const matchedGame = games.find(
@@ -274,7 +558,7 @@ function Profile() {
                     key={account.account_id}
                     account={account}
                     game={matchedGame}
-                    onEdit={handleOpenEditModal}
+                    onEdit={handleOpenEditGaModal}
                   />
                 );
               })}
@@ -283,12 +567,29 @@ function Profile() {
         </section>
       </main>
 
-      {/* Add / Edit Game Account Modal */}
+      {/* Game Account Modal */}
       <GameAccountModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSuccess={handleModalSuccess}
+        isOpen={isGaModalOpen}
+        onClose={() => setIsGaModalOpen(false)}
+        onSuccess={handleGaModalSuccess}
         editingAccount={editingAccount}
+        games={games}
+      />
+
+      {/* Free Agent Profile Modal */}
+      <FreeAgentProfileModal
+        isOpen={isFaModalOpen}
+        onClose={() => setIsFaModalOpen(false)}
+        onSuccess={() => {
+          loadFreeAgentProfiles();
+          showSuccessToast(
+            editingFaProfile
+              ? "Free-agent profile updated successfully!"
+              : "Free-agent profile created successfully!"
+          );
+        }}
+        editingProfile={editingFaProfile}
+        myGameAccounts={gameAccounts}
         games={games}
       />
 

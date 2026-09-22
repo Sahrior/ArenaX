@@ -3,13 +3,14 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import TeamMemberCard from "../components/TeamMemberCard";
-import { getTeamDetails } from "../api";
+import { getTeamDetails, getMyGameAccounts } from "../api";
 
 function TeamDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
 
   const [team, setTeam] = useState(null);
+  const [isCaptainUser, setIsCaptainUser] = useState(false);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -18,8 +19,24 @@ function TeamDetails() {
       setLoading(true);
       setErrorMsg("");
       try {
-        const data = await getTeamDetails(id);
-        setTeam(data);
+        const [teamData, myAccounts] = await Promise.all([
+          getTeamDetails(id),
+          getMyGameAccounts().catch(() => []),
+        ]);
+        setTeam(teamData);
+
+        // Determine if logged-in user is captain of this team
+        const captainMember = (teamData?.members || []).find(
+          (m) => (m.role || "").toLowerCase() === "captain"
+        );
+        if (captainMember && myAccounts.length > 0) {
+          const isOwner = myAccounts.some(
+            (ga) => String(ga.account_id) === String(captainMember.account_id)
+          );
+          setIsCaptainUser(isOwner);
+        } else {
+          setIsCaptainUser(false);
+        }
       } catch (err) {
         console.error("Failed to load team details:", err);
         if (err.isUnauthenticated) {
@@ -75,7 +92,7 @@ function TeamDetails() {
 
   const members = team.members || [];
   
-  // Categorize roster members
+  // Categorize roster members according to backend fields
   const captain = members.find((m) => (m.role || "").toLowerCase() === "captain");
   const mainRoster = members.filter(
     (m) => (m.role || "").toLowerCase() !== "captain" && !m.is_substitute
@@ -106,7 +123,7 @@ function TeamDetails() {
 
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div className="flex items-center gap-6">
-              {/* Big Logo */}
+              {/* Logo Badge */}
               <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-3xl border border-red-500/30 bg-gradient-to-br from-red-500/20 to-zinc-900 text-4xl font-black text-red-500 shadow-2xl shadow-red-500/10">
                 {team.team_name.charAt(0).toUpperCase()}
               </div>
@@ -138,13 +155,27 @@ function TeamDetails() {
               </div>
             </div>
 
-            {/* Status Summary Widget */}
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5 min-w-[200px] text-right">
-              <p className="text-xs text-zinc-400">Total Roster Size</p>
-              <p className="text-2xl font-black text-white mt-1">{members.length} Players</p>
-              <p className="text-[11px] text-zinc-500 mt-1">
-                {isForming ? "Needs 5 members to activate" : "Roster fully active"}
-              </p>
+            {/* Captain Actions & Status Summary */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+              {isCaptainUser && (
+                <button
+                  onClick={() => navigate("/free-agents")}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-500 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-red-500/20 transition hover:bg-red-600"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                  </svg>
+                  RECRUIT PLAYERS
+                </button>
+              )}
+
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5 text-right shrink-0">
+                <p className="text-xs text-zinc-400">Total Roster Size</p>
+                <p className="text-2xl font-black text-white mt-1">{members.length} Players</p>
+                <p className="text-[11px] text-zinc-500 mt-1">
+                  {isForming ? "Needs 5 members to activate" : "Roster fully active"}
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -152,12 +183,12 @@ function TeamDetails() {
 
       {/* Roster Sections */}
       <main className="mx-auto max-w-5xl w-full px-6 py-12 space-y-10 flex-1">
-        {/* Section 1: Captain */}
+        {/* Section 1: CAPTAIN */}
         <section>
           <div className="mb-4">
             <h2 className="text-lg font-bold text-white flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-red-500" />
-              TEAM CAPTAIN
+              CAPTAIN
             </h2>
             <p className="text-xs text-zinc-400">Team leader and roster administrator.</p>
           </div>
@@ -169,7 +200,7 @@ function TeamDetails() {
           )}
         </section>
 
-        {/* Section 2: Main Roster */}
+        {/* Section 2: MAIN ROSTER */}
         <section>
           <div className="mb-4 flex items-center justify-between">
             <div>
@@ -184,7 +215,7 @@ function TeamDetails() {
           {mainRoster.length === 0 ? (
             <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/20 p-8 text-center">
               <p className="text-sm font-medium text-zinc-400">Your main roster beyond the captain is currently empty.</p>
-              <p className="text-xs text-zinc-500 mt-1">Additional players will appear here once added to the team.</p>
+              <p className="text-xs text-zinc-500 mt-1">Recruit free agents to build out your starting lineup.</p>
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
@@ -195,13 +226,13 @@ function TeamDetails() {
           )}
         </section>
 
-        {/* Section 3: Substitutes */}
+        {/* Section 3: SUBSTITUTES */}
         {substitutes.length > 0 && (
           <section>
             <div className="mb-4">
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-amber-500" />
-                SUBSTITUTE PLAYERS ({substitutes.length})
+                SUBSTITUTES ({substitutes.length})
               </h2>
               <p className="text-xs text-zinc-400">Backup and rotation squad members.</p>
             </div>
