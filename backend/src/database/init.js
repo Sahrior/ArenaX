@@ -31,16 +31,18 @@ function createTables() {
 
 
         `
-        CREATE TABLE IF NOT EXISTS USER (
-            user_id INT AUTO_INCREMENT PRIMARY KEY,
-            username VARCHAR(30) NOT NULL UNIQUE,
-            email VARCHAR(100) NOT NULL UNIQUE,
-            password_hash VARCHAR(255) NOT NULL,
-            role ENUM('player', 'organizer') NOT NULL,
-            account_status ENUM('active', 'suspended', 'banned') NOT NULL DEFAULT 'active',
-            is_email_verified BOOLEAN NOT NULL DEFAULT FALSE,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
+    CREATE TABLE IF NOT EXISTS USER (
+        user_id INT AUTO_INCREMENT PRIMARY KEY,
+        username VARCHAR(30) NOT NULL UNIQUE,
+        email VARCHAR(100) NOT NULL UNIQUE,
+        password_hash VARCHAR(255) NOT NULL,
+        role ENUM('player', 'organizer') NOT NULL,
+        account_status ENUM('active', 'suspended', 'banned') NOT NULL DEFAULT 'active',
+        is_email_verified BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+        CHECK (email LIKE '%@%.%')
+    );
         `,
 
         
