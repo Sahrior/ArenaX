@@ -103,21 +103,39 @@ router.post("/", requireAuth, (req, res) => {
             return res.status(409).json({ error: "AN INVITATION IS ALREADY PENDING FOR THIS PLAYER" });
           }
 
-          // 7. Insert Invitation
-          const insertSql = `
-            INSERT INTO TEAM_INVITATION (team_id, game_account_id, status, sent_at)
-            VALUES (?, ?, 'pending', CURRENT_TIMESTAMP)
+          // 6b. Check if player has a pending TEAM_APPLICATION to this team
+          const appCheckSql = `
+            SELECT application_id
+            FROM TEAM_APPLICATION
+            WHERE team_id = ? AND game_account_id = ? AND status = 'pending'
           `;
 
-          db.query(insertSql, [team_id, game_account_id], (err, insertResults) => {
+          db.query(appCheckSql, [team_id, game_account_id], (err, appCheckResults) => {
             if (err) {
               console.error(err);
-              return res.status(500).json({ error: "FAILED TO CREATE TEAM INVITATION" });
+              return res.status(500).json({ error: "FAILED TO CHECK PLAYER APPLICATIONS" });
             }
 
-            res.status(201).json({
-              message: "INVITATION SENT SUCCESSFULLY",
-              invitationId: insertResults.insertId
+            if (appCheckResults.length > 0) {
+              return res.status(409).json({ error: "THIS PLAYER ALREADY HAS A PENDING APPLICATION FOR THIS TEAM" });
+            }
+
+            // 7. Insert Invitation
+            const insertSql = `
+              INSERT INTO TEAM_INVITATION (team_id, game_account_id, status, sent_at)
+              VALUES (?, ?, 'pending', CURRENT_TIMESTAMP)
+            `;
+
+            db.query(insertSql, [team_id, game_account_id], (err, insertResults) => {
+              if (err) {
+                console.error(err);
+                return res.status(500).json({ error: "FAILED TO CREATE TEAM INVITATION" });
+              }
+
+              res.status(201).json({
+                message: "INVITATION SENT SUCCESSFULLY",
+                invitationId: insertResults.insertId
+              });
             });
           });
         });
@@ -343,17 +361,42 @@ router.post("/:id/accept", requireAuth, (req, res) => {
                       console.error(err);
                     }
 
-                    // 8. Commit Transaction
-                    db.commit((err) => {
+                    // 8. Reject other pending invitations and applications for this player
+                    const rejectOtherInvsSql = `
+                      UPDATE TEAM_INVITATION
+                      SET status = 'rejected', responded_at = CURRENT_TIMESTAMP
+                      WHERE game_account_id = ? AND status = 'pending' AND invitation_id != ?
+                    `;
+
+                    db.query(rejectOtherInvsSql, [inv.game_account_id, invitationId], (err) => {
                       if (err) {
                         console.error(err);
-                        return db.rollback(() => {
-                          res.status(500).json({ error: "FAILED TO COMMIT INVITATION ACCEPTANCE" });
-                        });
                       }
 
-                      res.status(200).json({
-                        message: "INVITATION ACCEPTED SUCCESSFULLY"
+                      const rejectOtherAppsSql = `
+                        UPDATE TEAM_APPLICATION
+                        SET status = 'rejected', responded_at = CURRENT_TIMESTAMP
+                        WHERE game_account_id = ? AND status = 'pending'
+                      `;
+
+                      db.query(rejectOtherAppsSql, [inv.game_account_id], (err) => {
+                        if (err) {
+                          console.error(err);
+                        }
+
+                        // 9. Commit Transaction
+                        db.commit((err) => {
+                          if (err) {
+                            console.error(err);
+                            return db.rollback(() => {
+                              res.status(500).json({ error: "FAILED TO COMMIT INVITATION ACCEPTANCE" });
+                            });
+                          }
+
+                          res.status(200).json({
+                            message: "INVITATION ACCEPTED SUCCESSFULLY"
+                          });
+                        });
                       });
                     });
                   });

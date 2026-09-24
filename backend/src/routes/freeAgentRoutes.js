@@ -189,7 +189,7 @@ router.post("/", requireAuth, (req, res) => {
       }
 
       if (activeResults.length > 0) {
-        return res.status(400).json({ error: "ACTIVE TEAM MEMBERS CANNOT CREATE FREE AGENT PROFILES" });
+        return res.status(400).json({ error: "YOU ARE ALREADY A MEMBER OF AN ACTIVE TEAM" });
       }
 
       // 3. Check for existing free agent profile
@@ -276,37 +276,62 @@ router.put("/:id", requireAuth, (req, res) => {
     }
 
     const gameAccountId = results[0].game_account_id;
+    const isBecomingAvailable = availability_status.toLowerCase() === "available";
 
-    const updateSql = `
-      UPDATE FREE_AGENT_PROFILE
-      SET availability_status = ?, preferred_role = ?
-      WHERE free_agent_id = ?
-    `;
-
-    db.query(updateSql, [availability_status, preferred_role || null, freeAgentId], (err) => {
-      if (err) {
-        console.error(err);
-        return res.status(500).json({ error: "FAILED TO UPDATE FREE AGENT PROFILE" });
-      }
-
-      const isFreeAgent = availability_status.toLowerCase() === "available";
-
-      const updateGaSql = `
-        UPDATE GAME_ACCOUNT
-        SET is_free_agent = ?
-        WHERE account_id = ?
+    // If attempting to set status to 'available', verify not currently in an active team
+    if (isBecomingAvailable) {
+      const activeCheckSql = `
+        SELECT member_id
+        FROM TEAM_MEMBER
+        WHERE game_account_id = ? AND is_active = TRUE
       `;
 
-      db.query(updateGaSql, [isFreeAgent, gameAccountId], (err) => {
+      db.query(activeCheckSql, [gameAccountId], (err, activeResults) => {
         if (err) {
           console.error(err);
+          return res.status(500).json({ error: "FAILED TO CHECK TEAM MEMBERSHIP STATUS" });
         }
 
-        res.status(200).json({
-          message: "FREE AGENT PROFILE UPDATED SUCCESSFULLY"
+        if (activeResults.length > 0) {
+          return res.status(400).json({ error: "YOU ARE ALREADY A MEMBER OF AN ACTIVE TEAM" });
+        }
+
+        executeUpdate();
+      });
+    } else {
+      executeUpdate();
+    }
+
+    function executeUpdate() {
+      const updateSql = `
+        UPDATE FREE_AGENT_PROFILE
+        SET availability_status = ?, preferred_role = ?
+        WHERE free_agent_id = ?
+      `;
+
+      db.query(updateSql, [availability_status, preferred_role || null, freeAgentId], (err) => {
+        if (err) {
+          console.error(err);
+          return res.status(500).json({ error: "FAILED TO UPDATE FREE AGENT PROFILE" });
+        }
+
+        const updateGaSql = `
+          UPDATE GAME_ACCOUNT
+          SET is_free_agent = ?
+          WHERE account_id = ?
+        `;
+
+        db.query(updateGaSql, [isBecomingAvailable, gameAccountId], (err) => {
+          if (err) {
+            console.error(err);
+          }
+
+          res.status(200).json({
+            message: "FREE AGENT PROFILE UPDATED SUCCESSFULLY"
+          });
         });
       });
-    });
+    }
   });
 });
 

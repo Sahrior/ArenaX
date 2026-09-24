@@ -9,6 +9,7 @@ const gameAccountRoutes = require("./routes/gameAccountRoutes");
 const teamRoutes = require("./routes/teamRoutes");
 const freeAgentRoutes = require("./routes/freeAgentRoutes");
 const teamInvitationRoutes = require("./routes/teamInvitationRoutes");
+const teamApplicationRoutes = require("./routes/teamApplicationRoutes");
 
 const app = express();
 
@@ -56,6 +57,7 @@ app.use("/api/game-accounts", gameAccountRoutes);
 app.use("/api/teams", teamRoutes);
 app.use("/api/free-agents", freeAgentRoutes);
 app.use("/api/team-invitations", teamInvitationRoutes);
+app.use("/api/team-applications", teamApplicationRoutes);
 
 app.get("/api/test-organizer", requireRole("organizer"), (req, res) => {
     res.json({

@@ -14,7 +14,8 @@ import {
   deleteFreeAgentProfile,
   getMyTeamInvitations,
   acceptTeamInvitation,
-  rejectTeamInvitation
+  rejectTeamInvitation,
+  getMyTeamApplications
 } from "../api";
 
 function Profile() {
@@ -23,11 +24,13 @@ function Profile() {
   const [games, setGames] = useState([]);
   const [freeAgentProfiles, setFreeAgentProfiles] = useState([]);
   const [invitations, setInvitations] = useState([]);
+  const [applications, setApplications] = useState([]);
 
   const [loadingUser, setLoadingUser] = useState(true);
   const [loadingAccounts, setLoadingAccounts] = useState(true);
   const [loadingFa, setLoadingFa] = useState(true);
   const [loadingInvitations, setLoadingInvitations] = useState(true);
+  const [loadingApplications, setLoadingApplications] = useState(true);
 
   // Modals
   const [isGaModalOpen, setIsGaModalOpen] = useState(false);
@@ -103,11 +106,25 @@ function Profile() {
     }
   };
 
+  // Load Team Applications
+  const loadApplications = async () => {
+    setLoadingApplications(true);
+    try {
+      const fetchedApps = await getMyTeamApplications();
+      setApplications(fetchedApps);
+    } catch (error) {
+      console.error("Failed to load team applications:", error);
+    } finally {
+      setLoadingApplications(false);
+    }
+  };
+
   useEffect(() => {
     if (user) {
       loadGameData();
       loadFreeAgentProfiles();
       loadInvitations();
+      loadApplications();
     }
   }, [user]);
 
@@ -180,6 +197,7 @@ function Profile() {
       await acceptTeamInvitation(inv.invitation_id);
       showSuccessToast(`You joined ${inv.team_name}!`);
       loadInvitations();
+      loadApplications();
       loadGameData();
       loadFreeAgentProfiles();
       navigate(`/teams/${inv.team_id}`);
@@ -499,7 +517,85 @@ function Profile() {
           )}
         </section>
 
-        {/* Section 4: My Game Accounts */}
+        {/* Section 4: MY TEAM APPLICATIONS */}
+        <section>
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-red-500" />
+                MY TEAM APPLICATIONS ({applications.length})
+              </h2>
+              <p className="text-xs text-zinc-400 mt-1">
+                Applications you have submitted to join recruiting team main rosters.
+              </p>
+            </div>
+          </div>
+
+          {loadingApplications ? (
+            <div className="h-32 rounded-2xl border border-zinc-800 bg-zinc-900/30 animate-pulse" />
+          ) : applications.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-zinc-800 bg-zinc-900/20 p-8 text-center text-xs text-zinc-500">
+              You haven't applied to any teams yet.
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {applications.map((app) => {
+                const status = (app.application_status || "").toLowerCase();
+                const isPending = status === "pending";
+                const isAccepted = status === "accepted";
+
+                return (
+                  <div
+                    key={app.application_id}
+                    className={`rounded-2xl border p-5 flex flex-col justify-between ${
+                      isPending
+                        ? "border-red-500/30 bg-zinc-900/80"
+                        : "border-zinc-800 bg-zinc-950/60"
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="rounded-md bg-red-500/10 px-2.5 py-1 text-xs font-bold uppercase text-red-400 border border-red-500/20">
+                          {app.game_name}
+                        </span>
+                        <span className="text-xs font-mono font-bold text-zinc-400">
+                          [{app.team_tag}]
+                        </span>
+                      </div>
+
+                      <h3 className="text-lg font-bold text-white">{app.team_name}</h3>
+                      <p className="text-[11px] text-zinc-500 mt-1">
+                        Applied: {new Date(app.applied_at).toLocaleDateString()}
+                      </p>
+                      {app.responded_at && (
+                        <p className="text-[11px] text-zinc-500">
+                          Responded: {new Date(app.responded_at).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="mt-5 pt-3 border-t border-zinc-800/80 flex items-center justify-between text-xs">
+                      <span className="text-zinc-500">Application Status</span>
+                      <span
+                        className={`font-bold uppercase px-2.5 py-0.5 rounded text-[11px] border ${
+                          isPending
+                            ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                            : isAccepted
+                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                            : "bg-red-500/10 text-red-400 border-red-500/20"
+                        }`}
+                      >
+                        {app.application_status}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* Section 5: My Game Accounts */}
         <section>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>

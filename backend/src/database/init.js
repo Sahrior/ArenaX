@@ -153,6 +153,26 @@ function createTables() {
 
         
         `
+        CREATE TABLE IF NOT EXISTS TEAM_APPLICATION (
+            application_id INT AUTO_INCREMENT PRIMARY KEY,
+            team_id INT NOT NULL,
+            game_account_id INT NOT NULL,
+            status ENUM('pending', 'accepted', 'rejected') NOT NULL DEFAULT 'pending',
+            applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            responded_at TIMESTAMP NULL,
+
+            FOREIGN KEY (team_id)
+                REFERENCES TEAM(team_id)
+                ON DELETE CASCADE,
+
+            FOREIGN KEY (game_account_id)
+                REFERENCES GAME_ACCOUNT(account_id)
+                ON DELETE CASCADE
+        )
+        `,
+
+        
+        `
         CREATE TABLE IF NOT EXISTS TOURNAMENT (
             tournament_id INT AUTO_INCREMENT PRIMARY KEY,
             game_id INT NOT NULL,
@@ -369,7 +389,7 @@ function createTables() {
 
             if (completed === queries.length) {
                 console.log("=================================");
-                console.log("All 17 ArenaX tables created!");
+                console.log("All 18 ArenaX tables created!");
                 console.log("=================================");
 
                 db.end();

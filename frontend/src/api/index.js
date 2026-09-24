@@ -168,3 +168,47 @@ export async function rejectTeamInvitation(id) {
     method: "POST",
   });
 }
+
+// Recruiting Teams Discovery APIs
+export async function getRecruitingTeams(filters = {}) {
+  const params = new URLSearchParams();
+  if (filters.game_id) params.append("game_id", filters.game_id);
+  if (filters.search) params.append("search", filters.search);
+
+  const queryString = params.toString();
+  const endpoint = queryString ? `/teams/recruiting?${queryString}` : "/teams/recruiting";
+  const data = await request(endpoint);
+  return data.teams || [];
+}
+
+// Team Application APIs
+export async function createTeamApplication(applicationData) {
+  // applicationData: { team_id, game_account_id }
+  return request("/team-applications", {
+    method: "POST",
+    body: JSON.stringify(applicationData),
+  });
+}
+
+export async function getMyTeamApplications() {
+  const data = await request("/team-applications/my");
+  return data.applications || [];
+}
+
+export async function getReceivedTeamApplications() {
+  const data = await request("/team-applications/received");
+  return data.applications || [];
+}
+
+export async function acceptTeamApplication(id) {
+  return request(`/team-applications/${id}/accept`, {
+    method: "POST",
+  });
+}
+
+export async function rejectTeamApplication(id) {
+  return request(`/team-applications/${id}/reject`, {
+    method: "POST",
+  });
+}
+

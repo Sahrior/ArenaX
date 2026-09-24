@@ -3,7 +3,13 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import TeamMemberCard from "../components/TeamMemberCard";
-import { getTeamDetails, getMyGameAccounts } from "../api";
+import {
+  getTeamDetails,
+  getMyGameAccounts,
+  getReceivedTeamApplications,
+  acceptTeamApplication,
+  rejectTeamApplication
+} from "../api";
 
 function TeamDetails() {
   const { id } = useParams();
@@ -11,48 +17,99 @@ function TeamDetails() {
 
   const [team, setTeam] = useState(null);
   const [isCaptainUser, setIsCaptainUser] = useState(false);
+  const [receivedApps, setReceivedApps] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingApps, setLoadingApps] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [toastMessage, setToastMessage] = useState("");
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage("");
+    }, 4000);
+  };
+
+  const fetchDetails = async () => {
+    setLoading(true);
+    setErrorMsg("");
+    try {
+      const [teamData, myAccounts] = await Promise.all([
+        getTeamDetails(id),
+        getMyGameAccounts().catch(() => []),
+      ]);
+      setTeam(teamData);
+
+      // Determine if logged-in user is captain of this team
+      const captainMember = (teamData?.members || []).find(
+        (m) => (m.role || "").toLowerCase() === "captain"
+      );
+      if (captainMember && myAccounts.length > 0) {
+        const isOwner = myAccounts.some(
+          (ga) => String(ga.account_id) === String(captainMember.account_id)
+        );
+        setIsCaptainUser(isOwner);
+
+        if (isOwner) {
+          fetchReceivedApps();
+        }
+      } else {
+        setIsCaptainUser(false);
+      }
+    } catch (err) {
+      console.error("Failed to load team details:", err);
+      if (err.isUnauthenticated) {
+        navigate("/login");
+        return;
+      }
+      setErrorMsg(err.message || "Team not found or failed to load.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchReceivedApps = async () => {
+    setLoadingApps(true);
+    try {
+      const apps = await getReceivedTeamApplications();
+      // Filter for this team
+      const teamApps = apps.filter((a) => String(a.team_id) === String(id));
+      setReceivedApps(teamApps);
+    } catch (err) {
+      console.error("Failed to fetch received team applications:", err);
+    } finally {
+      setLoadingApps(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchDetails = async () => {
-      setLoading(true);
-      setErrorMsg("");
-      try {
-        const [teamData, myAccounts] = await Promise.all([
-          getTeamDetails(id),
-          getMyGameAccounts().catch(() => []),
-        ]);
-        setTeam(teamData);
-
-        // Determine if logged-in user is captain of this team
-        const captainMember = (teamData?.members || []).find(
-          (m) => (m.role || "").toLowerCase() === "captain"
-        );
-        if (captainMember && myAccounts.length > 0) {
-          const isOwner = myAccounts.some(
-            (ga) => String(ga.account_id) === String(captainMember.account_id)
-          );
-          setIsCaptainUser(isOwner);
-        } else {
-          setIsCaptainUser(false);
-        }
-      } catch (err) {
-        console.error("Failed to load team details:", err);
-        if (err.isUnauthenticated) {
-          navigate("/login");
-          return;
-        }
-        setErrorMsg(err.message || "Team not found or failed to load.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (id) {
       fetchDetails();
     }
   }, [id, navigate]);
+
+  const handleAcceptApp = async (appId) => {
+    try {
+      await acceptTeamApplication(appId);
+      showToast("Player application accepted.");
+      fetchDetails();
+      fetchReceivedApps();
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Failed to accept application.");
+    }
+  };
+
+  const handleRejectApp = async (appId) => {
+    try {
+      await rejectTeamApplication(appId);
+      showToast("Application rejected.");
+      fetchReceivedApps();
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Failed to reject application.");
+    }
+  };
 
   if (loading) {
     return (
@@ -181,8 +238,126 @@ function TeamDetails() {
         </div>
       </section>
 
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-950/90 px-5 py-3.5 text-sm text-emerald-300 shadow-2xl backdrop-blur-md animate-fade-in">
+          <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+          </svg>
+          <span className="font-semibold">{toastMessage}</span>
+        </div>
+      )}
+
       {/* Roster Sections */}
       <main className="mx-auto max-w-5xl w-full px-6 py-12 space-y-10 flex-1">
+        {/* Section 0: CAPTAIN RECEIVED TEAM APPLICATIONS */}
+        {isCaptainUser && (
+          <section className="rounded-2xl border border-red-500/30 bg-zinc-900/60 p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+              <div>
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-red-500 animate-pulse" />
+                  RECEIVED TEAM APPLICATIONS ({receivedApps.length})
+                </h2>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Players who have submitted applications to join your team's main roster.
+                </p>
+              </div>
+              <span className="text-xs font-mono font-bold text-zinc-400 bg-zinc-950 border border-zinc-800 px-3 py-1 rounded-lg">
+                Captain View
+              </span>
+            </div>
+
+            {loadingApps ? (
+              <div className="h-24 rounded-xl border border-zinc-800 bg-zinc-900/30 animate-pulse" />
+            ) : receivedApps.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-zinc-800 bg-zinc-950/40 p-6 text-center text-xs text-zinc-500">
+                No player applications yet for this team.
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {receivedApps.map((app) => {
+                  const isPending = (app.application_status || "").toLowerCase() === "pending";
+
+                  return (
+                    <div
+                      key={app.application_id}
+                      className="rounded-xl border border-zinc-800 bg-zinc-950/80 p-5 flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="text-base font-bold text-white">{app.game_username}</h3>
+                          <span
+                            className={`px-2.5 py-0.5 rounded text-[11px] font-bold uppercase border ${
+                              isPending
+                                ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                                : (app.application_status || "").toLowerCase() === "accepted"
+                                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                : "bg-red-500/10 text-red-400 border-red-500/20"
+                            }`}
+                          >
+                            {app.application_status}
+                          </span>
+                        </div>
+
+                        <div className="space-y-1 text-xs text-zinc-400 border-t border-zinc-900 pt-2.5">
+                          <div className="flex justify-between">
+                            <span>UID:</span>
+                            <span className="font-mono text-zinc-300">{app.game_uid}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Role:</span>
+                            <span className="font-semibold text-white uppercase">
+                              {app.preferred_role || "Flex / Any"}
+                            </span>
+                          </div>
+                          {app.university && (
+                            <div className="flex justify-between">
+                              <span>University:</span>
+                              <span className="text-zinc-300 truncate max-w-[160px]">
+                                {app.university}
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex justify-between pt-1">
+                            <span>Applied:</span>
+                            <span className="text-zinc-500">
+                              {new Date(app.applied_at).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 pt-3 border-t border-zinc-900">
+                        {isPending ? (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleAcceptApp(app.application_id)}
+                              className="flex-1 rounded-lg bg-emerald-500 py-2 text-xs font-bold text-white hover:bg-emerald-600 transition shadow-lg shadow-emerald-500/10"
+                            >
+                              ACCEPT
+                            </button>
+                            <button
+                              onClick={() => handleRejectApp(app.application_id)}
+                              className="flex-1 rounded-lg border border-zinc-700 py-2 text-xs font-semibold text-zinc-300 hover:bg-zinc-800 transition"
+                            >
+                              REJECT
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="text-center text-[11px] text-zinc-500 font-medium">
+                            Decision recorded
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
+
         {/* Section 1: CAPTAIN */}
         <section>
           <div className="mb-4">
